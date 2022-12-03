@@ -1,0 +1,215 @@
+- Önce veritabanı ve tablolar arasındaki ilişkiler oluşturulur.
+
+- VS'da Model içerisinde klasör oluşturulup ADO.NET Entity Data Model>DB First>Tables'daki bütün tablolar seçilerek veritabanı projeye eklenir.
+
+- Views > Shared sağ tıklanarak Add View ile Layout eklenir. Use a Layout işaretlenmez(İçerisine Bootstrap ile NavBar ekledik.).
+
+- Controller oluşturulur ve içerisindeki ActionResult'a sağ tıklayarak View oluşturulur. Use a Layout işaretlenir ve eklediğimiz Layout seçilir.
+
+- Layout'taki container'ın içerisine @RenderBody() komutu eklenir ve çalıştırılır.
+
+- Listelemek için Controller'a MvcDbStokEntities(DB adı + Entities) dbStokEntities = new MvcDbStokEntities(); nesnesi eklenir.
+
+- Index(ActionResult) metoduna;
+var degerler = dbStokEntities.Kategoriler.ToList();
+            return View(degerler); komutu eklenir.
+
+- View'e gelinip en üste;
+@using MvcStok.Models.Entity
+@model List<Kategoriler> eklenir. Aşağıya ise
+
+<table class="table table-bordered">
+    <tr>
+        <th>Kategori ID</th>
+        <th>Kategori Adı</th>
+    </tr>
+    <tbody>
+        @foreach (var kategori in Model)
+        {
+            <tr>
+                <td>@kategori.KategoriID </td>
+                <td>@kategori.KategoriAd </td>
+                (Silme ve güncelleme işlemleri için ==> <td><a href="/Kategori/Sil/@kategori.KategoriID" class="btn btn-danger">Sil</a>
+                <a href="/Kategori/KategoriGuncelle/@kategori.KategoriID" class="btn btn-default">Güncelle</a></td>)
+            </tr>
+        }
+    </tbody>
+</table>
+
+(Ekleme işlemi için <a href="/Kategori/YeniKategori/" class="btn btn-primary">Yeni Kategori Ekle</a>)
+ eklenip çalıştırılır.
+
+- Ekleme işlemi için;
+        [HttpGet] ==> İşlem yapılmazsa sadece View'i döndür.
+        public ActionResult YeniKategori()
+        {
+            return View();
+        }
+
+        [HttpPost] ==> İşlem yapılırsa ekle.
+        public ActionResult YeniKategori(Kategoriler parameter1)
+        {
+            dbStokEntities.Kategoriler.Add(parameter1);
+            dbStokEntities.SaveChanges();
+            return View();
+        } yaz ve View ekle.
+
+- View içerisine ;
+<form class="form-group" method="post">
+    <div>
+        <label>Kategori Adı: </label>
+        <input type="text" class="form-control" name="KategoriAd" />
+    </div>
+    <div style="margin-top:15px"> ==> Yukarıdan 15 piksel boşluk bırak
+        <button class="btn btn-success">Ekle</button>
+    </div>
+</form> yaz.
+
+- Ürün ve müşteride de manık aynı. Yalnız ürün için kategorileri db'den droplist ile çekeceğiz. Bunun için UrunController'ı şu şekilde düzenle;
+[HttpGet] 
+public ActionResult YeniUrun()
+        {
+            List<SelectListItem> degerler = (from i in dbStokEntities.Kategoriler.ToList()
+                                             select new SelectListItem
+                                             {
+                                                 Text = i.KategoriAd,
+                                                 Value = i.KategoriID.ToString()
+                                             }).ToList();
+            Viewbag.dgr=degerler; ==> View sayfasına taşımak için
+            return View();
+        } 
+[HttpPost]
+        public ActionResult YeniUrun(Urunler parameter)
+        {
+            var kategori = dbStokEntities.Kategoriler.Where(p=>p.KategoriID==parameter.Kategoriler.KategoriID).FirstOrDefault();
+            parameter.Kategoriler = kategori;
+            dbStokEntities.Urunler.Add(parameter);
+            dbStokEntities.SaveChanges();
+            return RedirectToAction("List");
+        }
+- YeniUrun'e gel ve en üste @model MvcStok.Models.Entity.Urunler ekle. Sonra aşağıda kategori div.ine;
+<label>Kategori: </label>
+        @Html.DropDownListFor(m=>m.Kategoriler.KategoriID,(List<SelectListItem>)ViewBag.dgr,new{@class= "form-control" }) yaz.
+
+- Kategori silmek için Controller'a gelip;
+public ActionResult Sil(int id)
+        {
+            var kategori = dbStokEntities.Kategoriler.Find(id);
+            dbStokEntities.Kategoriler.Remove(kategori);
+            dbStokEntities.SaveChanges();
+            return RedirectToAction("List");
+        } ekle.
+
+- Güncelleme için Controller'a;
+public ViewResult KategoriGuncelle(int id)
+        {
+            var kategori = dbStokEntities.Kategoriler.Find(id);
+        !!(ÜRÜN GÜNCELLERKEN YUKARIDAKİ LİST METODUNU BURAYA DA YAZ.)!!
+            return View("KategoriGuncelle", kategori);
+        } metodunu yaz ve sağ tık > Add View diyerek KategoriGuncelle View'ini ekle.
+public ActionResult Guncelle(Kategoriler kategori)
+        {
+            var ktg = dbStokEntities.Kategoriler.Find(kategori.KategoriID);
+            ktg.KategoriAd = kategori.KategoriAd;
+            ...
+            (ürün kategoriai güncellenirken urun.UrunKategori=u.Kategoriler.KategoriID;)
+            dbStokEntities.SaveChanges();
+            return RedirectToAction("List");
+        }
+
+- View'in en üstüne @model MvcStok.Models.Entity.Kategoriler ekle. Alt tarafına ise;
+<h2>Kategori Güncelle</h2>
+@using (Html.BeginForm("Guncelle", "Kategori", FormMethod.Post))
+            {
+                <div class="form-group">
+                    @Html.LabelFor(m=>m.KategoriID)
+                    @Html.TextBoxFor(m=>m.KategoriID, new {@class="form-control"})
+                    <br />
+                    @Html.LabelFor(m=>m.KategoriAd)
+                    @Html.TextBoxFor(m=>m.KategoriAd, new {@class="form-control"})
+                </div>
+                <div>
+                    <button class="btn btn-success">Güncelle</button>
+                </div>
+            } yaz.
+- Validation'ı modeldeki ilgili tablodan ekliyoruz.Örneğin Kategori Adı'na [Required(ErrorMessage ="Kategori Adını Giriniz")] ekledik.
+Sonra YeniKategori View'ine gelip;
+@Html.TextBoxFor(m=>m.KategoriAd, new {@class="form-control"})
+        @Html.ValidationMessageFor(m=>m.KategoriAd,"", new { @style = "color:red"}) komutlarını ekledik. Daha sonra Controller'a gelip YeniKategori'nin ActionResult'ına;
+if (!ModelState.IsValid)
+            {
+                return View("YeniKategori");
+            } ekledik.
+
+- Bazen(özellikle ilişkili tablolarda) View tarafından validation ekleyebiliriz. Örneğin;
+        <input type="text" class="form-control" name="UrunAd" required placeholder="Buraya ürün adı giriniz." maxlength="50"/>
+
+- Sayfalama için PagedList.Mvc package'i ve Controller'a using PagedList ve using PagedList.Mvc kütüphaneleri eklenir. List'e (int sayfa=1) parametresi eklenip içine var degerler = dbStokEntities.Kategoriler.ToList().ToPagedList(sayfa , 4); yazılır.
+Aynı kütüphaneler List View'ine de eklenip @model PagedList.IPagedList<Kategoriler> şeklinde değiştirilir ve tablonun altına;
+@Html.PagedListPager((IPagedList)Model, sayfa=>Url.Action("List", new {sayfa})) yazılır.
+
+- Alert kullanımı için örneğin ürün eklerken;
+Ekle butonunun içine id="btnekle" eklenir ve aşağıya;
+ <script>
+        $('#btnekle').click(function () { alert("Müşteri eklendi.") });
+    </script> kodu yazılır.
+
+- Silerken Alert ile onay almak için List View'e gelinip;
+@Html.ActionLink("Sil", "Sil", new {id=kategori.KategoriID}, new {@class="btn btn-danger", onclick="return confirm('Gerçekten silmek istiyor musunuz?')"}) yazılır.
+
+- Satışları Modal Popup ile eklemek için Controller ve ardından Index View oluşturulur. Index View'e gelip;
+<h2>Satışlar</h2>
+<br />
+<button type="submit" class="btn btn-primary" data-toggle="modal" data-target="#SatisEkrani">
+    Satış Yap
+</button>
+<div class="modal" id="SatisEkrani">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Satış Ekle</h2>
+            </div>
+            <form method="post" action="/Satis/YeniSatis">
+                <div class="modal-body">
+                    <label>Ürün Adı:</label>
+                    @Html.TextBoxFor(m => m.Urun, new { @class = "form-control" })
+                    <br />
+                    <label>Müşteri Adı ve Soyadı:</label>
+                    @Html.TextBoxFor(m => m.Musteri, new { @class = "form-control" })
+                    <br />
+                    <label>Adet:</label>
+                    @Html.TextBoxFor(m => m.Adet, new { @class = "form-control" })
+                    <br />
+                    <label>Fiyat:</label>
+                    @Html.TextBoxFor(m => m.Fiyat, new { @class = "form-control" })
+                    <br />
+                    <button type="submit" class="btn btn-info">Kaydet</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Vazgeç</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+- Arama paneli için (örneğin müşteri arama) Controller'daki List metodu şu şekilde düzenlenir;
+public ActionResult List(string parametre)
+        {
+            var degerler = from musteri in dbStokEntities.Musteriler select musteri;
+            if (!string.IsNullOrEmpty(parametre))
+            {
+                degerler = degerler.Where(m => m.MusteriAd.Contains(parametre));
+            }
+            
+            return View(degerler.ToList()) ;
+            //var degerler = dbStokEntities.Musteriler.ToList();
+            //return View(degerler);
+        }
+- Ardından List'in View'ine gelinir ve tablonun üstüne;
+@using (Html.BeginForm("List", "Musteri", FormMethod.Get))
+{
+<p>
+    <b>Müşteri Adı:@Html.TextBox("parametre")</b>
+    <input type="submit" value="Ara" />
+</p>
+    
+}yazılır.

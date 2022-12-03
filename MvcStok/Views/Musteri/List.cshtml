@@ -1,0 +1,40 @@
+﻿@using MvcStok.Models.Entity
+@model List<Musteriler>
+@{
+    ViewBag.Title = "List";
+    Layout = "~/Views/Shared/_MainView.cshtml";
+}
+
+@using (Html.BeginForm("List", "Musteri", FormMethod.Get))
+{
+<p>
+    <b>Müşteri Adı: </b>@Html.TextBox("parametre")
+    <input type="submit" value="Ara" />
+</p>
+    
+}
+
+
+<table class="table table-bordered">
+    <tr>
+        <th>Müşteri ID</th>
+        <th>Müşteri Adı</th>
+        <th>Müşteri Soyadı</th>
+    </tr>
+    <tbody>
+        @foreach (var musteri in Model)
+        {
+            <tr>
+                <td>@musteri.MusteriID</td>
+                <td>@musteri.MusteriAd</td>
+                <td>@musteri.MusteriSoyad</td>
+                <td>
+                    <a href="/Musteri/Sil/@musteri.MusteriID" class="btn btn-danger">Sil</a>
+                    <a href="/Musteri/MusteriGuncelle/@musteri.MusteriID" class="btn btn-default">Güncelle</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<a href="/Musteri/YeniMusteri/" class="btn btn-primary">Yeni Müsteri Ekle</a>
+
